@@ -1,145 +1,503 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Effort Estimator</title>
-  <style>
-    /* Global Styles */
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f4f7fc;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .container {
-      background-color: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      padding: 30px;
-      width: 100%;
-      max-width: 600px;
-    }
-
-    h1 {
-      text-align: center;
-      color: #333;
-    }
-
-    label {
-      font-weight: bold;
-      margin-top: 15px;
-      display: block;
-      color: #555;
-    }
-
-    select, input[type="number"] {
-      width: 100%;
-      padding: 10px;
-      margin-top: 8px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      background-color: #f9f9f9;
-      font-size: 16px;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 20px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    button:hover {
-      background-color: #45a049;
-    }
-
-    .result-box {
-      margin-top: 30px;
-      padding: 20px;
-      background-color: #e9f7ef;
-      border-left: 5px solid #4CAF50;
-      border-radius: 8px;
-      font-size: 16px;
-      color: #333;
-    }
-
-    .result-box strong {
-      font-size: 18px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Project Effort & Cost Estimator with Firestore Save/Load/Delete</title>
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f4f7fc;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .container {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    max-width: 700px;
+    width: 100%;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  label {
+    font-weight: bold;
+    margin-top: 15px;
+    display: block;
+  }
+  select, input[type="number"], input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+  }
+  .ratio-grid, .rate-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-top: 10px;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    margin-top: 15px;
+  }
+  .toggle-row input[type="checkbox"] {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    background-color: #4CAF50;
+    color: white;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background-color: #45a049;
+  }
+  .result-box {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #e9f7ef;
+    border-left: 5px solid #4CAF50;
+    border-radius: 8px;
+    white-space: pre-wrap;
+  }
+  .hidden {
+    display: none;
+  }
+  .result-box strong {
+    display: block;
+    margin-top: 10px;
+    font-size: 17px;
+  }
+  .save-row {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+  }
+  .save-row input[type="text"] {
+    flex-grow: 1;
+  }
+  .config-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+  }
+  .config-actions button {
+    width: auto;
+    padding: 8px 14px;
+    background-color: #d9534f;
+  }
+  .config-actions button:hover {
+    background-color: #c9302c;
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>Project Effort Estimator</h1>
-    <label for="projectType">Select Project Type:</label>
-    <select id="projectType">
-      <option value="web">Web Application</option>
-      <option value="mobile">Mobile Application</option>
-      <option value="api">API Integration</option>
-      <option value="data">Data Migration</option>
-      <option value="business">Business Systems</option>
-      <option value="cloud">Cloud Infrastructure</option>
-      <option value="embedded">Embedded Systems</option>
+<div class="container">
+  <h1>Project Effort & Cost Estimator</h1>
+
+  <label for="savedConfigs">Load Saved Config:</label>
+  <div style="display:flex; gap:10px; align-items:center;">
+    <select id="savedConfigs" onchange="loadConfigFromFirestore()" style="flex-grow:1;">
+      <option value="">-- Select Saved Config --</option>
     </select>
-
-    <label for="devEffort">Development Effort (days):</label>
-    <input type="number" id="devEffort" placeholder="Enter development effort" />
-
-    <button onclick="calculateEffort()">Estimate</button>
-
-    <div id="result" class="result-box"></div>
+    <button id="deleteConfigBtn" class="hidden" onclick="deleteSelectedConfig()">Delete Config</button>
   </div>
 
-  <script>
-    const effortRatios = {
-      web: { qa: 0.4, ba: 0.3, br: 0.2, pm: 0.1 },
-      mobile: { qa: 0.5, ba: 0.25, br: 0.15, pm: 0.1 },
-      api: { qa: 0.3, ba: 0.35, br: 0.1, pm: 0.1 },
-      data: { qa: 0.45, ba: 0.4, br: 0.25, pm: 0.1 },
-      business: { qa: 0.35, ba: 0.4, br: 0.2, pm: 0.1 },
-      cloud: { qa: 0.25, ba: 0.2, br: 0.15, pm: 0.1 },
-      embedded: { qa: 0.5, ba: 0.3, br: 0.15, pm: 0.1 }
+  <label for="projectType">Project Type:</label>
+  <select id="projectType" onchange="loadDefaultRatios()">
+    <option value="web">Web App</option>
+    <option value="mobile">Mobile App</option>
+    <option value="api">API Integration</option>
+    <option value="data">Data Migration</option>
+    <option value="business">Business Systems</option>
+    <option value="cloud">Cloud Infrastructure</option>
+    <option value="embedded">Embedded Systems</option>
+  </select>
+
+  <label for="devEffort">Development Effort (days):</label>
+  <input type="number" id="devEffort" placeholder="Enter dev effort" min="0" step="any" />
+
+  <div class="toggle-row">
+    <input type="checkbox" id="useDefaultRatios" checked onchange="toggleRatioInputs()" />
+    <label for="useDefaultRatios">Use Default Ratios</label>
+  </div>
+
+  <div id="ratioInputs" class="ratio-grid hidden">
+    <div>
+      <label for="qaRatio">QA (%):</label>
+      <input type="number" id="qaRatio" min="0" step="any" />
+    </div>
+    <div>
+      <label for="baRatio">BA (%):</label>
+      <input type="number" id="baRatio" min="0" step="any" />
+    </div>
+    <div>
+      <label for="brRatio">Business Readiness (%):</label>
+      <input type="number" id="brRatio" min="0" step="any" />
+    </div>
+    <div>
+      <label for="pmRatio">Project Management (%):</label>
+      <input type="number" id="pmRatio" min="0" step="any" />
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <input type="checkbox" id="toggleCost" onchange="toggleCostFields()" />
+    <label for="toggleCost">Enable Cost Estimation</label>
+  </div>
+
+  <div id="costInputs" class="rate-grid hidden">
+    <div>
+      <label for="rateDev">Dev Day Rate (£):</label>
+      <input type="number" id="rateDev" min="0" step="any" />
+    </div>
+    <div>
+      <label for="rateQA">QA Day Rate (£):</label>
+      <input type="number" id="rateQA" min="0" step="any" />
+    </div>
+    <div>
+      <label for="rateBA">BA Day Rate (£):</label>
+      <input type="number" id="rateBA" min="0" step="any" />
+    </div>
+    <div>
+      <label for="rateBR">Business Readiness Day Rate (£):</label>
+      <input type="number" id="rateBR" min="0" step="any" />
+    </div>
+    <div>
+      <label for="ratePM">Project Management Day Rate (£):</label>
+      <input type="number" id="ratePM" min="0" step="any" />
+    </div>
+  </div>
+
+  <button onclick="calculateEffort()">Estimate</button>
+
+  <div class="result-box" id="result"></div>
+
+  <!-- Save Config at bottom -->
+  <label for="configName">Save Current Config As:</label>
+  <div class="save-row">
+    <input type="text" id="configName" placeholder="Enter config name" />
+    <button onclick="saveConfigToFirestore()">Save Config</button>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzfW7FFIoLOJmWphoq092LYlImrIZa4Y0",
+    authDomain: "truetrack-48efc.firebaseapp.com",
+    projectId: "truetrack-48efc",
+    storageBucket: "truetrack-48efc.firebasestorage.app",
+    messagingSenderId: "648826161861",
+    appId: "1:648826161861:web:1b83029bcb2e1d0d637eac",
+    measurementId: "G-9SX34M564D"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const defaultRatios = {
+    web:      { qa: 40, ba: 30, br: 20, pm: 10 },
+    mobile:   { qa: 50, ba: 25, br: 15, pm: 10 },
+    api:      { qa: 30, ba: 35, br: 10, pm: 10 },
+    data:     { qa: 45, ba: 40, br: 25, pm: 10 },
+    business: { qa: 35, ba: 40, br: 20, pm: 10 },
+    cloud:    { qa: 25, ba: 20, br: 15, pm: 10 },
+    embedded: { qa: 50, ba: 30, br: 15, pm: 10 }
+  };
+
+  function loadDefaultRatios() {
+    if (document.getElementById('useDefaultRatios').checked) {
+      const type = document.getElementById('projectType').value;
+      const ratios = defaultRatios[type];
+      document.getElementById('qaRatio').value = ratios.qa;
+      document.getElementById('baRatio').value = ratios.ba;
+      document.getElementById('brRatio').value = ratios.br;
+      document.getElementById('pmRatio').value = ratios.pm;
+    }
+  }
+
+  function toggleCostFields() {
+    const costInputs = document.getElementById('costInputs');
+    costInputs.classList.toggle('hidden');
+  }
+
+  function toggleRatioInputs() {
+    const ratioInputs = document.getElementById('ratioInputs');
+    const useDefaults = document.getElementById('useDefaultRatios').checked;
+    if (useDefaults) {
+      ratioInputs.classList.add('hidden');
+      loadDefaultRatios();
+    } else {
+      ratioInputs.classList.remove('hidden');
+    }
+  }
+
+  function calculateEffort() {
+    const devEffort = parseFloat(document.getElementById('devEffort').value);
+    if (isNaN(devEffort) || devEffort < 0) {
+      alert("Please enter a valid Development Effort");
+      return;
+    }
+
+    const qaRatio = parseFloat(document.getElementById('qaRatio').value) / 100;
+    const baRatio = parseFloat(document.getElementById('baRatio').value) / 100;
+    const brRatio = parseFloat(document.getElementById('brRatio').value) / 100;
+    const pmRatio = parseFloat(document.getElementById('pmRatio').value) / 100;
+
+    const qaEffort = devEffort * qaRatio;
+    const baEffort = devEffort * baRatio;
+    const brEffort = devEffort * brRatio;
+    const pmEffort = devEffort * pmRatio;
+
+    const totalEffort = devEffort + qaEffort + baEffort + brEffort + pmEffort;
+
+    let output = `Effort Estimation (days):\n`;
+    output += `Development: ${devEffort.toFixed(2)}\n`;
+    output += `QA: ${qaEffort.toFixed(2)}\n`;
+    output += `BA: ${baEffort.toFixed(2)}\n`;
+    output += `Business Readiness: ${brEffort.toFixed(2)}\n`;
+    output += `Project Management: ${pmEffort.toFixed(2)}\n`;
+    output += `--------------------------\n`;
+    output += `Total Effort: ${totalEffort.toFixed(2)} days\n`;
+
+    if (document.getElementById('toggleCost').checked) {
+      const rateDev = parseFloat(document.getElementById('rateDev').value) || 0;
+      const rateQA = parseFloat(document.getElementById('rateQA').value) || 0;
+      const rateBA = parseFloat(document.getElementById('rateBA').value) || 0;
+      const rateBR = parseFloat(document.getElementById('rateBR').value) || 0;
+      const ratePM = parseFloat(document.getElementById('ratePM').value) || 0;
+
+      const costDev = devEffort * rateDev;
+      const costQA = qaEffort * rateQA;
+      const costBA = baEffort * rateBA;
+      const costBR = brEffort * rateBR;
+      const costPM = pmEffort * ratePM;
+
+      const totalCost = costDev + costQA + costBA + costBR + costPM;
+
+      output += `\nCost Estimation (£):\n`;
+      output += `Development: £${costDev.toFixed(2)}\n`;
+      output += `QA: £${costQA.toFixed(2)}\n`;
+      output += `BA: £${costBA.toFixed(2)}\n`;
+      output += `Business Readiness: £${costBR.toFixed(2)}\n`;
+      output += `Project Management: £${costPM.toFixed(2)}\n`;
+      output += `--------------------------\n`;
+      output += `Total Cost: £${totalCost.toFixed(2)}\n`;
+    }
+
+    document.getElementById('result').textContent = output;
+  }
+
+  async function saveConfigToFirestore() {
+    const name = document.getElementById('configName').value.trim();
+    if (!name) {
+      alert("Please enter a name for the configuration before saving.");
+      return;
+    }
+
+    const cfg = {
+      name,
+      projectType: document.getElementById('projectType').value,
+      devEffort: parseFloat(document.getElementById('devEffort').value) || 0,
+      useDefaultRatios: document.getElementById('useDefaultRatios').checked,
+      ratios: {
+        qa: parseFloat(document.getElementById('qaRatio').value) || 0,
+        ba: parseFloat(document.getElementById('baRatio').value) || 0,
+        br: parseFloat(document.getElementById('brRatio').value) || 0,
+        pm: parseFloat(document.getElementById('pmRatio').value) || 0
+      },
+      costEnabled: document.getElementById('toggleCost').checked,
+      rates: {
+        dev: parseFloat(document.getElementById('rateDev').value) || 0,
+        qa: parseFloat(document.getElementById('rateQA').value) || 0,
+        ba: parseFloat(document.getElementById('rateBA').value) || 0,
+        br: parseFloat(document.getElementById('rateBR').value) || 0,
+        pm: parseFloat(document.getElementById('ratePM').value) || 0
+      }
     };
 
-    function calculateEffort() {
-      const type = document.getElementById('projectType').value;
-      const dev = parseFloat(document.getElementById('devEffort').value);
+    try {
+      // Check if there's a selected config to update instead of adding new
+      const select = document.getElementById('savedConfigs');
+      const selectedId = select.value;
+      if (selectedId) {
+        await db.collection('configs').doc(selectedId).set(cfg);
+        alert("Configuration updated successfully!");
+      } else {
+        await db.collection('configs').add(cfg);
+        alert("Configuration saved successfully!");
+      }
+      loadAllConfigs(name);
+    } catch (error) {
+      console.error("Error saving config:", error);
+      alert("Error saving configuration. See console.");
+    }
+  }
 
-      if (isNaN(dev) || dev <= 0) {
-        alert("Please enter a valid development effort.");
+  async function loadAllConfigs(selectName = "") {
+    const select = document.getElementById('savedConfigs');
+    select.innerHTML = '<option value="">-- Select Saved Config --</option>';
+    try {
+      const snapshot = await db.collection('configs').orderBy('name').get();
+      snapshot.forEach(doc => {
+        const cfg = doc.data();
+        const option = document.createElement('option');
+        option.value = doc.id;
+        option.textContent = cfg.name;
+        select.appendChild(option);
+      });
+
+      if (selectName) {
+        // Select saved config by name
+        for (let opt of select.options) {
+          if (opt.textContent === selectName) {
+            select.value = opt.value;
+            loadConfigFromFirestore();
+            break;
+          }
+        }
+      }
+      toggleDeleteButton();
+    } catch (error) {
+      console.error("Error loading configs:", error);
+      alert("Error loading saved configs. See console.");
+    }
+  }
+
+  async function loadConfigFromFirestore() {
+    const select = document.getElementById('savedConfigs');
+    const selectedId = select.value;
+    if (!selectedId) {
+      clearForm();
+      toggleDeleteButton();
+      return;
+    }
+
+    try {
+      const doc = await db.collection('configs').doc(selectedId).get();
+      if (!doc.exists) {
+        alert("Selected config no longer exists.");
+        loadAllConfigs();
         return;
       }
 
-      const ratios = effortRatios[type];
-      const qa = dev * ratios.qa;
-      const ba = dev * ratios.ba;
-      const br = dev * ratios.br;
-      const pm = dev * ratios.pm;
-      const total = dev + qa + ba + br + pm;
+      const cfg = doc.data();
 
-      document.getElementById('result').innerHTML = `
-        <strong>Estimates:</strong><br>
-        Development: ${dev.toFixed(1)} days<br>
-        QA: ${qa.toFixed(1)} days<br>
-        BA: ${ba.toFixed(1)} days<br>
-        Business Readiness: ${br.toFixed(1)} days<br>
-        Project Management: ${pm.toFixed(1)} days<br>
-        <hr>
-        <strong>Total: ${total.toFixed(1)} days</strong>
-      `;
+      document.getElementById('configName').value = cfg.name || '';
+      document.getElementById('projectType').value = cfg.projectType || 'web';
+      document.getElementById('devEffort').value = cfg.devEffort || '';
+
+      document.getElementById('useDefaultRatios').checked = cfg.useDefaultRatios;
+      toggleRatioInputs();
+
+      if (!cfg.useDefaultRatios && cfg.ratios) {
+        document.getElementById('qaRatio').value = cfg.ratios.qa || '';
+        document.getElementById('baRatio').value = cfg.ratios.ba || '';
+        document.getElementById('brRatio').value = cfg.ratios.br || '';
+        document.getElementById('pmRatio').value = cfg.ratios.pm || '';
+      } else {
+        loadDefaultRatios();
+      }
+
+      document.getElementById('toggleCost').checked = cfg.costEnabled || false;
+      const costInputsDiv = document.getElementById('costInputs');
+      if (cfg.costEnabled) {
+        costInputsDiv.classList.remove('hidden');
+      } else {
+        costInputsDiv.classList.add('hidden');
+      }
+
+      if (cfg.rates) {
+        document.getElementById('rateDev').value = cfg.rates.dev || '';
+        document.getElementById('rateQA').value = cfg.rates.qa || '';
+        document.getElementById('rateBA').value = cfg.rates.ba || '';
+        document.getElementById('rateBR').value = cfg.rates.br || '';
+        document.getElementById('ratePM').value = cfg.rates.pm || '';
+      }
+
+      document.getElementById('result').textContent = '';
+      toggleDeleteButton();
+    } catch (error) {
+      console.error("Error loading config:", error);
+      alert("Error loading config. See console.");
     }
-  </script>
+  }
+
+  function clearForm() {
+    document.getElementById('configName').value = '';
+    document.getElementById('projectType').value = 'web';
+    document.getElementById('devEffort').value = '';
+    document.getElementById('useDefaultRatios').checked = true;
+    toggleRatioInputs();
+    loadDefaultRatios();
+    document.getElementById('toggleCost').checked = false;
+    document.getElementById('costInputs').classList.add('hidden');
+    document.getElementById('rateDev').value = '';
+    document.getElementById('rateQA').value = '';
+    document.getElementById('rateBA').value = '';
+    document.getElementById('rateBR').value = '';
+    document.getElementById('ratePM').value = '';
+    document.getElementById('result').textContent = '';
+    document.getElementById('savedConfigs').value = "";
+  }
+
+  // Show or hide delete button based on selection
+  function toggleDeleteButton() {
+    const select = document.getElementById('savedConfigs');
+    const deleteBtn = document.getElementById('deleteConfigBtn');
+    if (select.value) {
+      deleteBtn.classList.remove('hidden');
+    } else {
+      deleteBtn.classList.add('hidden');
+    }
+  }
+
+  async function deleteSelectedConfig() {
+    const select = document.getElementById('savedConfigs');
+    const selectedId = select.value;
+    if (!selectedId) return;
+
+    if (!confirm("Are you sure you want to DELETE this configuration? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await db.collection('configs').doc(selectedId).delete();
+      alert("Configuration deleted successfully.");
+      clearForm();
+      loadAllConfigs();
+    } catch (error) {
+      console.error("Error deleting config:", error);
+      alert("Error deleting configuration. See console.");
+    }
+  }
+
+  // Initialize on load
+  window.onload = () => {
+    loadDefaultRatios();
+    loadAllConfigs();
+  };
+</script>
 </body>
 </html>
