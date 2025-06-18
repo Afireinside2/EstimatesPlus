@@ -105,6 +105,17 @@
   .config-actions button:hover {
     background-color: #c9302c;
   }
+
+  /* New styles for the two buttons side-by-side */
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .action-buttons button {
+    flex: 1;
+    width: auto;
+  }
 </style>
 </head>
 <body>
@@ -185,7 +196,10 @@
     </div>
   </div>
 
-  <button onclick="calculateEffort()">Estimate</button>
+  <div class="action-buttons">
+    <button onclick="calculateEffort()">Estimate</button>
+    <button onclick="clearForm()" style="background-color:#d9534f;">Clear Form</button>
+  </div>
 
   <div class="result-box" id="result"></div>
 
@@ -237,21 +251,23 @@
     }
   }
 
-  function toggleCostFields() {
-    const costInputs = document.getElementById('costInputs');
-    costInputs.classList.toggle('hidden');
+function toggleCostFields() {
+  const costInputs = document.getElementById('costInputs');
+  const enabled = document.getElementById('toggleCost').checked;
+  if (enabled) {
+    costInputs.classList.remove('hidden');
+    // Default cost inputs to 400 if empty
+    ['rateDev', 'rateQA', 'rateBA', 'rateBR', 'ratePM'].forEach(id => {
+      const input = document.getElementById(id);
+      if (!input.value) {
+        input.value = 400;
+      }
+    });
+  } else {
+    costInputs.classList.add('hidden');
   }
+}
 
-  function toggleRatioInputs() {
-    const ratioInputs = document.getElementById('ratioInputs');
-    const useDefaults = document.getElementById('useDefaultRatios').checked;
-    if (useDefaults) {
-      ratioInputs.classList.add('hidden');
-      loadDefaultRatios();
-    } else {
-      ratioInputs.classList.remove('hidden');
-    }
-  }
 
   function calculateEffort() {
     const devEffort = parseFloat(document.getElementById('devEffort').value);
@@ -293,7 +309,6 @@
       const costBA = baEffort * rateBA;
       const costBR = brEffort * rateBR;
       const costPM = pmEffort * ratePM;
-
       const totalCost = costDev + costQA + costBA + costBR + costPM;
 
       output += `\nCost Estimation (£):\n`;
@@ -309,194 +324,159 @@
     document.getElementById('result').textContent = output;
   }
 
-  async function saveConfigToFirestore() {
-    const name = document.getElementById('configName').value.trim();
-    if (!name) {
-      alert("Please enter a name for the configuration before saving.");
-      return;
-    }
-
-    const cfg = {
-      name,
-      projectType: document.getElementById('projectType').value,
-      devEffort: parseFloat(document.getElementById('devEffort').value) || 0,
-      useDefaultRatios: document.getElementById('useDefaultRatios').checked,
-      ratios: {
-        qa: parseFloat(document.getElementById('qaRatio').value) || 0,
-        ba: parseFloat(document.getElementById('baRatio').value) || 0,
-        br: parseFloat(document.getElementById('brRatio').value) || 0,
-        pm: parseFloat(document.getElementById('pmRatio').value) || 0
-      },
-      costEnabled: document.getElementById('toggleCost').checked,
-      rates: {
-        dev: parseFloat(document.getElementById('rateDev').value) || 0,
-        qa: parseFloat(document.getElementById('rateQA').value) || 0,
-        ba: parseFloat(document.getElementById('rateBA').value) || 0,
-        br: parseFloat(document.getElementById('rateBR').value) || 0,
-        pm: parseFloat(document.getElementById('ratePM').value) || 0
-      }
-    };
-
-    try {
-      // Check if there's a selected config to update instead of adding new
-      const select = document.getElementById('savedConfigs');
-      const selectedId = select.value;
-      if (selectedId) {
-        await db.collection('configs').doc(selectedId).set(cfg);
-        alert("Configuration updated successfully!");
-      } else {
-        await db.collection('configs').add(cfg);
-        alert("Configuration saved successfully!");
-      }
-      loadAllConfigs(name);
-    } catch (error) {
-      console.error("Error saving config:", error);
-      alert("Error saving configuration. See console.");
-    }
-  }
-
-  async function loadAllConfigs(selectName = "") {
-    const select = document.getElementById('savedConfigs');
-    select.innerHTML = '<option value="">-- Select Saved Config --</option>';
-    try {
-      const snapshot = await db.collection('configs').orderBy('name').get();
-      snapshot.forEach(doc => {
-        const cfg = doc.data();
-        const option = document.createElement('option');
-        option.value = doc.id;
-        option.textContent = cfg.name;
-        select.appendChild(option);
-      });
-
-      if (selectName) {
-        // Select saved config by name
-        for (let opt of select.options) {
-          if (opt.textContent === selectName) {
-            select.value = opt.value;
-            loadConfigFromFirestore();
-            break;
-          }
-        }
-      }
-      toggleDeleteButton();
-    } catch (error) {
-      console.error("Error loading configs:", error);
-      alert("Error loading saved configs. See console.");
-    }
-  }
-
-  async function loadConfigFromFirestore() {
-    const select = document.getElementById('savedConfigs');
-    const selectedId = select.value;
-    if (!selectedId) {
-      clearForm();
-      toggleDeleteButton();
-      return;
-    }
-
-    try {
-      const doc = await db.collection('configs').doc(selectedId).get();
-      if (!doc.exists) {
-        alert("Selected config no longer exists.");
-        loadAllConfigs();
-        return;
-      }
-
-      const cfg = doc.data();
-
-      document.getElementById('configName').value = cfg.name || '';
-      document.getElementById('projectType').value = cfg.projectType || 'web';
-      document.getElementById('devEffort').value = cfg.devEffort || '';
-
-      document.getElementById('useDefaultRatios').checked = cfg.useDefaultRatios;
-      toggleRatioInputs();
-
-      if (!cfg.useDefaultRatios && cfg.ratios) {
-        document.getElementById('qaRatio').value = cfg.ratios.qa || '';
-        document.getElementById('baRatio').value = cfg.ratios.ba || '';
-        document.getElementById('brRatio').value = cfg.ratios.br || '';
-        document.getElementById('pmRatio').value = cfg.ratios.pm || '';
-      } else {
-        loadDefaultRatios();
-      }
-
-      document.getElementById('toggleCost').checked = cfg.costEnabled || false;
-      const costInputsDiv = document.getElementById('costInputs');
-      if (cfg.costEnabled) {
-        costInputsDiv.classList.remove('hidden');
-      } else {
-        costInputsDiv.classList.add('hidden');
-      }
-
-      if (cfg.rates) {
-        document.getElementById('rateDev').value = cfg.rates.dev || '';
-        document.getElementById('rateQA').value = cfg.rates.qa || '';
-        document.getElementById('rateBA').value = cfg.rates.ba || '';
-        document.getElementById('rateBR').value = cfg.rates.br || '';
-        document.getElementById('ratePM').value = cfg.rates.pm || '';
-      }
-
-      document.getElementById('result').textContent = '';
-      toggleDeleteButton();
-    } catch (error) {
-      console.error("Error loading config:", error);
-      alert("Error loading config. See console.");
-    }
-  }
-
   function clearForm() {
-    document.getElementById('configName').value = '';
     document.getElementById('projectType').value = 'web';
     document.getElementById('devEffort').value = '';
     document.getElementById('useDefaultRatios').checked = true;
     toggleRatioInputs();
-    loadDefaultRatios();
     document.getElementById('toggleCost').checked = false;
     document.getElementById('costInputs').classList.add('hidden');
+
+    // Clear all ratio inputs
+    document.getElementById('qaRatio').value = '';
+    document.getElementById('baRatio').value = '';
+    document.getElementById('brRatio').value = '';
+    document.getElementById('pmRatio').value = '';
+
+    // Clear all rate inputs
     document.getElementById('rateDev').value = '';
     document.getElementById('rateQA').value = '';
     document.getElementById('rateBA').value = '';
     document.getElementById('rateBR').value = '';
     document.getElementById('ratePM').value = '';
+
     document.getElementById('result').textContent = '';
-    document.getElementById('savedConfigs').value = "";
+    document.getElementById('configName').value = '';
+
+    // Clear selected saved config
+    document.getElementById('savedConfigs').value = '';
+    document.getElementById('deleteConfigBtn').classList.add('hidden');
+
+    loadDefaultRatios();
   }
 
-  // Show or hide delete button based on selection
-  function toggleDeleteButton() {
-    const select = document.getElementById('savedConfigs');
-    const deleteBtn = document.getElementById('deleteConfigBtn');
-    if (select.value) {
-      deleteBtn.classList.remove('hidden');
-    } else {
-      deleteBtn.classList.add('hidden');
+  async function saveConfigToFirestore() {
+    const configName = document.getElementById('configName').value.trim();
+    if (!configName) {
+      alert('Please enter a config name to save.');
+      return;
+    }
+
+    const configData = {
+      projectType: document.getElementById('projectType').value,
+      devEffort: document.getElementById('devEffort').value,
+      useDefaultRatios: document.getElementById('useDefaultRatios').checked,
+      qaRatio: document.getElementById('qaRatio').value,
+      baRatio: document.getElementById('baRatio').value,
+      brRatio: document.getElementById('brRatio').value,
+      pmRatio: document.getElementById('pmRatio').value,
+      toggleCost: document.getElementById('toggleCost').checked,
+      rateDev: document.getElementById('rateDev').value,
+      rateQA: document.getElementById('rateQA').value,
+      rateBA: document.getElementById('rateBA').value,
+      rateBR: document.getElementById('rateBR').value,
+      ratePM: document.getElementById('ratePM').value,
+      savedAt: new Date()
+    };
+
+    try {
+      await db.collection('estimatorConfigs').doc(configName).set(configData);
+      alert('Config saved successfully!');
+      loadConfigsFromFirestore();
+      document.getElementById('configName').value = '';
+    } catch (error) {
+      console.error("Error saving config: ", error);
+      alert('Error saving config. Check console for details.');
     }
   }
 
-  async function deleteSelectedConfig() {
-    const select = document.getElementById('savedConfigs');
-    const selectedId = select.value;
-    if (!selectedId) return;
+  async function loadConfigsFromFirestore() {
+    try {
+      const snapshot = await db.collection('estimatorConfigs').get();
+      const select = document.getElementById('savedConfigs');
+      select.innerHTML = '<option value="">-- Select Saved Config --</option>';
+      snapshot.forEach(doc => {
+        const option = document.createElement('option');
+        option.value = doc.id;
+        option.textContent = doc.id;
+        select.appendChild(option);
+      });
+    } catch (error) {
+      console.error("Error loading configs: ", error);
+    }
+  }
 
-    if (!confirm("Are you sure you want to DELETE this configuration? This action cannot be undone.")) {
+  async function loadConfigFromFirestore() {
+    const selectedId = document.getElementById('savedConfigs').value;
+    const deleteBtn = document.getElementById('deleteConfigBtn');
+    if (!selectedId) {
+      deleteBtn.classList.add('hidden');
+      clearForm();
       return;
     }
 
     try {
-      await db.collection('configs').doc(selectedId).delete();
-      alert("Configuration deleted successfully.");
-      clearForm();
-      loadAllConfigs();
+      const doc = await db.collection('estimatorConfigs').doc(selectedId).get();
+      if (doc.exists) {
+        const data = doc.data();
+        document.getElementById('projectType').value = data.projectType || 'web';
+        document.getElementById('devEffort').value = data.devEffort || '';
+        document.getElementById('useDefaultRatios').checked = data.useDefaultRatios ?? true;
+
+        if (data.useDefaultRatios) {
+          toggleRatioInputs();
+        } else {
+          toggleRatioInputs();
+          document.getElementById('qaRatio').value = data.qaRatio || '';
+          document.getElementById('baRatio').value = data.baRatio || '';
+          document.getElementById('brRatio').value = data.brRatio || '';
+          document.getElementById('pmRatio').value = data.pmRatio || '';
+        }
+
+        document.getElementById('toggleCost').checked = data.toggleCost || false;
+        if (data.toggleCost) {
+          document.getElementById('costInputs').classList.remove('hidden');
+        } else {
+          document.getElementById('costInputs').classList.add('hidden');
+        }
+        document.getElementById('rateDev').value = data.rateDev || '';
+        document.getElementById('rateQA').value = data.rateQA || '';
+        document.getElementById('rateBA').value = data.rateBA || '';
+        document.getElementById('rateBR').value = data.rateBR || '';
+        document.getElementById('ratePM').value = data.ratePM || '';
+
+        deleteBtn.classList.remove('hidden');
+        document.getElementById('result').textContent = '';
+      }
     } catch (error) {
-      console.error("Error deleting config:", error);
-      alert("Error deleting configuration. See console.");
+      console.error("Error loading config: ", error);
+    }
+  }
+
+  async function deleteSelectedConfig() {
+    const selectedId = document.getElementById('savedConfigs').value;
+    if (!selectedId) {
+      alert('No config selected to delete.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete "${selectedId}"?`)) {
+      return;
+    }
+    try {
+      await db.collection('estimatorConfigs').doc(selectedId).delete();
+      alert(`Config "${selectedId}" deleted successfully.`);
+      loadConfigsFromFirestore();
+      clearForm();
+    } catch (error) {
+      console.error("Error deleting config: ", error);
+      alert('Error deleting config. Check console for details.');
     }
   }
 
   // Initialize on load
   window.onload = () => {
+    loadConfigsFromFirestore();
     loadDefaultRatios();
-    loadAllConfigs();
   };
 </script>
 </body>
