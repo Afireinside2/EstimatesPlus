@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Effort Estimator</title>
+  <style>
+    /* Global Styles */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f7fc;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 15px;
+      display: block;
+      color: #555;
+    }
+
+    select, input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .result-box {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #e9f7ef;
+      border-left: 5px solid #4CAF50;
+      border-radius: 8px;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .result-box strong {
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Project Effort Estimator</h1>
+    <label for="projectType">Select Project Type:</label>
+    <select id="projectType">
+      <option value="web">Web Application</option>
+      <option value="mobile">Mobile Application</option>
+      <option value="api">API Integration</option>
+      <option value="data">Data Migration</option>
+      <option value="business">Business Systems</option>
+      <option value="cloud">Cloud Infrastructure</option>
+      <option value="embedded">Embedded Systems</option>
+    </select>
+
+    <label for="devEffort">Development Effort (days):</label>
+    <input type="number" id="devEffort" placeholder="Enter development effort" />
+
+    <button onclick="calculateEffort()">Estimate</button>
+
+    <div id="result" class="result-box"></div>
+  </div>
+
+  <script>
+    const effortRatios = {
+      web: { qa: 0.4, ba: 0.3, br: 0.2, pm: 0.1 },
+      mobile: { qa: 0.5, ba: 0.25, br: 0.15, pm: 0.1 },
+      api: { qa: 0.3, ba: 0.35, br: 0.1, pm: 0.1 },
+      data: { qa: 0.45, ba: 0.4, br: 0.25, pm: 0.1 },
+      business: { qa: 0.35, ba: 0.4, br: 0.2, pm: 0.1 },
+      cloud: { qa: 0.25, ba: 0.2, br: 0.15, pm: 0.1 },
+      embedded: { qa: 0.5, ba: 0.3, br: 0.15, pm: 0.1 }
+    };
+
+    function calculateEffort() {
+      const type = document.getElementById('projectType').value;
+      const dev = parseFloat(document.getElementById('devEffort').value);
+
+      if (isNaN(dev) || dev <= 0) {
+        alert("Please enter a valid development effort.");
+        return;
+      }
+
+      const ratios = effortRatios[type];
+      const qa = dev * ratios.qa;
+      const ba = dev * ratios.ba;
+      const br = dev * ratios.br;
+      const pm = dev * ratios.pm;
+      const total = dev + qa + ba + br + pm;
+
+      document.getElementById('result').innerHTML = `
+        <strong>Estimates:</strong><br>
+        Development: ${dev.toFixed(1)} days<br>
+        QA: ${qa.toFixed(1)} days<br>
+        BA: ${ba.toFixed(1)} days<br>
+        Business Readiness: ${br.toFixed(1)} days<br>
+        Project Management: ${pm.toFixed(1)} days<br>
+        <hr>
+        <strong>Total: ${total.toFixed(1)} days</strong>
+      `;
+    }
+  </script>
+</body>
+</html>
