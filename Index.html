@@ -324,6 +324,22 @@ function toggleCostFields() {
     document.getElementById('result').textContent = output;
   }
 
+  function toggleRatioInputs() {
+  const useDefault = document.getElementById('useDefaultRatios').checked;
+  const ratioInputsContainer = document.getElementById('ratioInputs');
+
+  if (useDefault) {
+    // Hide custom ratio inputs
+    ratioInputsContainer.classList.add('hidden');
+    // Load default ratios for selected project type
+    loadDefaultRatios();
+  } else {
+    // Show custom ratio inputs for manual entry
+    ratioInputsContainer.classList.remove('hidden');
+  }
+}
+
+
   function clearForm() {
     document.getElementById('projectType').value = 'web';
     document.getElementById('devEffort').value = '';
@@ -474,10 +490,11 @@ function toggleCostFields() {
   }
 
   // Initialize on load
-  window.onload = () => {
-    loadConfigsFromFirestore();
-    loadDefaultRatios();
-  };
+window.onload = () => {
+  loadConfigsFromFirestore();
+  toggleRatioInputs();  // instead of loadDefaultRatios();
+};
+
 </script>
 </body>
 </html>
